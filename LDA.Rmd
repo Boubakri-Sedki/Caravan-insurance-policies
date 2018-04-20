@@ -1,0 +1,227 @@
+---
+title: "Scoring with LDA"
+output: html_notebook
+---
+
+
+
+
+```{r}
+data<-read.table("C:/Users/Sedki/Desktop/ML/lab3/Lab Police d'Assurance sur Caravane/AssurancExpertsInc.txt",header = T)
+data=data[,c(2:4,6:64,86)]
+head(data)
+```
+
+```{r}
+library(tidyverse)
+library(caret)
+```
+
+```{r}
+train<-read.table("C:/Users/Sedki/Desktop/ML/lab3//assTrain.csv",header = T,sep=',')
+test<-read.table("C:/Users/Sedki/Desktop/ML/lab3//assTest.csv",header = T,sep=',')
+train<-train[,c(2:4,6:64,86)]
+test<-test[,c(2:4,6:64,86)]
+head(train)
+
+```
+
+Scaling the training and testing data:
+```{r}
+# Estimate preprocessing parameters
+preproc.param <- train[,1:62] %>% 
+  preProcess(method = c("center", "scale"))
+# Transform the data using the estimated parameters
+train.transformed <- preproc.param %>% predict(train)
+test.transformed <- preproc.param %>% predict(test)
+head(test.transformed)
+```
+
+
+
+
+```{r}
+library(MASS)
+# Fit the model
+model <- lda(CLASS~., data = train.transformed)
+model
+```
+
+
+
+```{r}
+# Make predictions
+predictions <- model %>% predict(test.transformed)
+predictions2 <- model %>% predict(train.transformed)
+
+# Model accuracy
+a=mean(predictions$class==test.transformed$CLASS)
+a
+
+head(predictions$x,10)
+head(test$CLASS,10)
+
+table(predict(model, type="class")$class, train$CLASS)
+
+```
+
+
+```{r}
+x <-predictions$x
+y <-test$CLASS
+x2 <-predictions2$x
+y2 <-train$CLASS
+
+x_name <- "score"
+y_name <- "Class"
+
+df <- data.frame(predictions$posterior,x,y)
+names(df) <- c("Proba no","Proba yes",x_name,y_name)
+df2 <- data.frame(predictions2$posterior,x2,y2)
+names(df2) <- c("Proba no","Proba yes",x_name,y_name)
+dd=df
+nrow(dd)
+df=df[order(df$score,decreasing = TRUE),]
+
+head(df2,100)
+
+```
+
+
+
+
+
+```{r}
+plot(model)
+```
+
+
+```{r}
+predictions <- model %>% predict(test.transformed)
+names(predictions)
+```
+
+
+```{r}
+# Predicted classes
+head(predictions$class, 10)
+# Predicted probabilities of class memebership.
+head(predictions$posterior, 10) 
+# Linear discriminants
+head(predictions$x, 10) 
+```
+
+```{r}
+lda.data <- cbind(train.transformed, predict(model)$x)
+ggplot(lda.data, aes(LD1,LD1)) +
+  geom_point(aes(color = CLASS))
+
+```
+
+
+Starting from a score of 1.5 , we reach the typical profile of the target customer.
+
+```{r}
+sum(predictions$posterior[ ,2] >=.4)
+sum(predictions$posterior[ ,1] >=.7)
+
+
+
+```
+
+```{r}
+table(test$PO59,predictions$class) #Contribution fire policies
+
+table(test$SD10,predictions$class)#married
+
+
+table(test$SD16,predictions$class)#High level education
+
+table(test$PO47,predictions$class) #Contribution car policies
+table(test$PO61,predictions$class)#Contribution boat policies
+
+
+```
+
+
+
+```{r}
+a=(model$scaling)
+
+
+data.features=data[,c(28,29,34,33,16,45,59,8,35,30,57,36,10)]
+train2<-train.transformed[,c(28,29,34,33,16,45,59,8,35,30,57,36,10,20,40,31,37,42,12,63)]
+test2<-test.transformed[,c(28,29,34,33,16,45,59,8,35,30,57,36,10,20,40,31,37,42,12,63)]
+```
+
+
+
+
+
+The features that have the most variance between classes.
+
+
+```{r}
+mns = aggregate(train2,train2['CLASS'],mean)
+rownames(mns) = mns$CLASS
+mns$CLASS = NULL
+barplot(as.matrix(mns),beside=TRUE,cex.names=.8,las=3)
+a <- data.frame(x,test$SD30,test$SD31,test$SD35,test$SD36,test$SD18,test$SD10,test$SD37,test$SD32,test$SD38,test$SD12,test$SD22,test$SD42,
+                test$SD33,test$SD39,test$SD14,test$PO47,test$PO61,test$PO59,test$PO44,test$CLASS)
+
+names(a) <- c("score","SD30","SD31","SD35",'SD36','SD18','SD10','SD37','SD32','SD38','SD12','SD22','SD42',
+                'SD33','SD39','SD14','PO47','PO61','PO59','PO44','CLASS')
+
+
+write.csv2(a,"C:/Users/Sedki/Desktop/ML/lab3/scores.csv",row.names = FALSE)
+
+b <- data.frame(x2,train$SD30,train$SD31,train$SD35,train$SD36,train$SD18,train$SD10,train$SD37,train$SD32,train$SD38,train$SD12,train$SD22,train$SD42,
+                train$SD33,train$SD39,train$SD14,train$PO47,train$PO61,train$PO59,train$PO44,train$CLASS)
+names(b) <- c("score","SD30","SD31","SD35",'SD36','SD18','SD10','SD37','SD32','SD38','SD12','SD22','SD42',
+                'SD33','SD39','SD14','PO47','PO61','PO59','PO44','CLASS')
+
+
+write.csv2(b,"C:/Users/Sedki/Desktop/ML/lab3/scores2.csv",row.names = FALSE)
+
+```
+
+
+
+
+```{r}
+model2 <- lda(CLASS~., data = train2)
+# Make predictions
+predictions <- model2 %>% predict(test2)
+# Model accuracy
+a=mean(predictions$class==test2$CLASS)
+a
+
+head(predictions$x,10)
+head(test2$CLASS,10)
+
+table(predict(model, type="class")$class, train2$CLASS)
+```
+
+
+
+```{r}
+model2
+```
+
+
+
+
+
+```{r}
+x <-predictions$x
+y <-test2$CLASS
+
+x_name <- "score"
+y_name <- "Class"
+
+df <- data.frame(predictions$posterior,x,y)
+names(df) <- c("Prob no","Prob yes",x_name,y_name)
+df=df[order(df$score,decreasing = TRUE),]
+head(df,50)
+```
+
